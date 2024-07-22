@@ -42,12 +42,12 @@ import DrawCanvas from './draw-canvas'
 let countdown = 3;
 
 /**
- * measurement_token
+ * token
  * 测量服务令牌(token)需要通过请求许可证(APP_ID/APP_KEY) 认证API获得
  * 用户认证 | 心健康测量SDK产品文档  https://measurement.xymind.cn/docs/api/authorization.html
  */
 
-const measurment_token = ``
+const token = ``
 
 /**
  * status
@@ -233,7 +233,7 @@ export default {
         this.camera.open().then(() => {
           // 测量服务令牌(token)需要通过请求许可证(APP_ID/APP_KEY) 认证API获得
           // 用户认证 | 心健康测量SDK产品文档  https://measurement.xymind.cn/docs/api/authorization.html
-          this.Measurement = new Measurement(measurment_token, ...categories)
+          this.Measurement = new Measurement(token, ...categories)
           
           this.eventListener()
           
