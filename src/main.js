@@ -1,14 +1,16 @@
-import Vue from 'vue'
+import './assets/css/reset.css'
+import './assets/css/style.css'
+
+import { createApp } from 'vue'
 import App from './App.vue'
-import store from './store'
-import './style/reset.css'
-import 'vant/lib/index.css'
-
 import router from './router'
+import { Toast } from 'vant';
 
-Vue.config.productionTip = false
-new Vue({
-  router,
-  store,
-  render: h => h(App)
-}).$mount('#app')
+// 只在开发环境启用VConsole (dev/development模式)
+if (import.meta.env.DEV || import.meta.env.MODE === 'dev' || import.meta.env.MODE === 'development') {
+  import('vconsole').then(VConsole => {
+    new VConsole.default()
+  })
+}
+
+createApp(App).use(Toast).use(router).mount('#app')
