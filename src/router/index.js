@@ -1,23 +1,14 @@
-import Vue from 'vue'
-import VueRouter from 'vue-router'
-// import Home from '../views/Home.vue'
+import { createRouter, createWebHistory } from 'vue-router'
+import measurement from '../views/measurement/index.vue'
+import Sao from '../views/sao2/index.vue'
 
-Vue.use(VueRouter)
-const original = VueRouter.prototype.push
-VueRouter.prototype.push = function push(location) {
-  return original.call(this, location).catch(err => err)
-}
 const routes = [
-  {
-    path: '/',
-    name: 'v2',
-    component: () => import(/* webpackChunkName: "about" */ '../views/v2')
-  },
+  { path: '/', component: measurement },
+  { path: '/sao2', name: 'sao2', component: Sao },
 ]
 
-const router = new VueRouter({
-  // mode: 'history',
-  base: process.env.BASE_URL,
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL), // 与 Vite base 对齐
   routes
 })
 
