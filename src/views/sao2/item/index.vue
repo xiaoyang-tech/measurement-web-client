@@ -32,7 +32,6 @@
   </div>
 </template>
 <script>
-import "vant/lib/button/style";
 import ItemContent from "../content.vue";
 import GaugeEcharts from "../../../components/echarts/index.vue";
 import Lines from "../../../components/lines/index.vue";
@@ -52,6 +51,7 @@ export default {
     ItemContent,
     Lines,
   },
+  emits: ['to-router'],
   props: {
     row: {
       type: Object,

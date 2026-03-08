@@ -12,15 +12,13 @@
     </div>
   </div>
 </template>
-<script>
-export default {
-  props: {
-    title: {
-      type: String,
-      default: () => ''
-    }
+<script setup>
+defineProps({
+  title: {
+    type: String,
+    default: ''
   }
-}
+})
 </script>
 <style lang="scss" scoped>
 .details-wrapper{

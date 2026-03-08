@@ -15,19 +15,18 @@
     </div>
   </div>
 </template>
-<script>
-export default {
-  props: {
-    mask: {
-      type: Boolean,
-      default: () => false,
-    },
-    loading: {
-      type: Boolean,
-      default: () => false,
-    },
+<script setup>
+defineProps({
+  mask: {
+    type: Boolean,
+    default: false,
   },
-};
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+})
+defineEmits(['start'])
 </script>
 <style lang="scss" scoped>
 .measurement-layout {

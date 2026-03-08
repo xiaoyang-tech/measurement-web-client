@@ -12,31 +12,23 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import TextMore from "../text-more/index.vue";
 
-export default {
-  props: {
-    label: {
-      type: String,
-      default: () => "",
-    },
-    isSlot: {
-      type: Boolean,
-      default: true,
-    },
-    message: {
-      type: String,
-      default: () => "",
-    },
+defineProps({
+  label: {
+    type: String,
+    default: "",
   },
-  components: {
-    TextMore,
+  isSlot: {
+    type: Boolean,
+    default: true,
   },
-  data() {
-    return {};
+  message: {
+    type: String,
+    default: "",
   },
-};
+})
 </script>
 
 <style lang="scss" scoped>

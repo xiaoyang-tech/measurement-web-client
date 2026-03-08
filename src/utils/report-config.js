@@ -1,11 +1,29 @@
-// symbol
-// lt 小于
-// le 小于等于
-// eq 等于
-// ne 不等于
-// ge 大于等于
-// gt 大于
+/**
+ * 健康报告配置
+ *
+ * symbol 比较符号:
+ *   lt 小于 | le 小于等于 | eq 等于 | ne 不等于 | ge 大于等于 | gt 大于
+ *
+ * reportConfig 条目结构:
+ *   label    - 指标中文名
+ *   value    - 对应 SDK 返回数据的字段名
+ *   Category - 指标分类编号
+ *   id       - 唯一标识
+ *   data[]   - 分段阈值数组，每项: { min, max, symbol, total, color, label }
+ *   trend    - 趋势图对应字段
+ *   advice   - 建议文案对应字段
+ *   status   - SDK 状态字段名
+ *   terms    - 国际化术语 key
+ */
 
+/**
+ * 判断 score 是否在 [min, max) 或 [min, max] 区间内
+ * @param {'lt'|'le'|'eq'|'ne'|'ge'|'gt'} symbol - 上界比较方式
+ * @param {number} min - 下界（含）
+ * @param {number} max - 上界
+ * @param {number} score - 待判定值
+ * @returns {boolean}
+ */
 export const computedSymbol = (symbol, min, max, score) => {
   if (symbol === 'le') {
     return score >= min && score <= max
@@ -288,23 +306,6 @@ export const reportConfig = [
     status: 'anxiety',
     terms: ''
   },
-  // {
-  //   label: '压抑度(负向)',
-  //   value: 'depression',
-  //   Category: 23,
-  //   id: 23,
-  //   data: [
-  //     { min: 0, max: 20, symbol: 'lt', total: 100, color: '#6EDAA9', label: '良好' },
-  //     { min: 20, max: 40, symbol: 'lt', total: 100, color: '#85c9fa', label: '优秀' },
-  //     { min: 40, max: 60, symbol: 'lt', total: 100, color: '#FCCE57', label: '轻度不健康' },
-  //     { min: 60, max: 80, symbol: 'lt', total: 100, color: '#FC9557', label: '中度不健康' },
-  //     { min: 80, max: 100, symbol: 'le', total: 100, color: '#FF5252', label: '重度不健康' },
-  //   ],
-  //   trend: 'depression',
-  //   advice: 'depression',
-  //   status: 'depression',
-  //   terms: ''
-  // },
   {
     label: '活力度(正向)',
     value: 'vitality',
@@ -322,23 +323,6 @@ export const reportConfig = [
     status: 'vitality',
     terms: ''
   },
-  // {
-  //   label: '积极性(正向)',
-  //   value: 'positivity',
-  //   Category: 25,
-  //   id: 25,
-  //   data: [
-  //     { min: 0, max: 20, symbol: 'lt', total: 100, color: '#FF5252', label: '重度不健康' },
-  //     { min: 20, max: 40, symbol: 'lt', total: 100, color: '#FC9557', label: '中度不健康' },
-  //     { min: 40, max: 60, symbol: 'lt', total: 100, color: '#FCCE57', label: '轻度不健康' },
-  //     { min: 60, max: 80, symbol: 'lt', total: 100, color: '#6EDAA9', label: '优秀' },
-  //     { min: 80, max: 100, symbol: 'le', total: 100, color: '#85c9fa', label: '良好' },
-  //   ],
-  //   trend: 'positivity',
-  //   advice: 'positivity',
-  //   status: 'positivity',
-  //   terms: ''
-  // },
   {
     label: '抑郁度(负向)',
     value: 'suppression',

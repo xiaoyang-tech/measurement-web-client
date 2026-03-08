@@ -35,17 +35,11 @@ import { MeasurementCategory } from "xiaoyang-health-measurement";
 import Cookies from "js-cookie";
 import { Icon, Overlay, Loading } from "vant";
 import { showDialog } from "vant";
-import "vant/lib/dialog/style/index";
 import MeasurementContainer from "../../components/measurement/index.vue";
-import { disableIcon, enableIcon, scannerIcon } from "./icon.js";
+import { disableIcon, enableIcon } from "./icon.js";
+import { DANGER_LEVEL_COLORS } from "../../utils/constants";
+import { MEASUREMENT } from "../../utils/messages";
 import MaskPage from "./mask.vue";
-const DANGER_LEVEL_COLORS = {
-  1: "#4CAF50",
-  2: "#8BC34A",
-  3: "#FFC107",
-  4: "#FF9800",
-  5: "#F44336",
-};
 export default {
   components: {
     [Icon.name]: Icon,
@@ -53,14 +47,11 @@ export default {
     [Loading.name]: Loading,
     MeasurementContainer,
     MaskPage,
-    // ButtonContainer
   },
-  // components: {},
   data() {
     return {
       disableIcon,
       enableIcon,
-      scannerIcon,
       faceController: null,
       loading: false,
       mask: true,
@@ -71,9 +62,7 @@ export default {
       user: {}, // 用户信息
     };
   },
-  mounted() {
-    // console.log(import.meta.env.MODE)
-  },
+  mounted() {},
   async beforeUnmount() {
     this.dispose();
   },
@@ -91,6 +80,11 @@ export default {
         case "updateMessage":
           this.updateMessage(params);
           break;
+        case "updateProgress":
+          if (this.faceController) {
+            this.faceController.updateProgress(params);
+          }
+          break;
         case "dispose":
           this.dispose();
           break;
@@ -107,7 +101,7 @@ export default {
               this.faceController.showHeart(params?.hrbpm || 0);
             }
           } catch (error) {
-            console.log("chunkReportGenerated handle", error);
+            console.error("chunkReportGenerated handle", error);
           }
           break;
         default:
@@ -115,8 +109,8 @@ export default {
       }
     },
     toRouter() {
-      // 进度条已走完 测量已完成 测量ID存在
-      if (this.progressCompleted && this.completed && this.measurementId) {
+      // 测量已完成 测量ID存在
+      if (this.completed && this.measurementId) {
         this.$router.push({ name: "sao2", query: { measurementId: this.measurementId } });
       }
     },
@@ -129,13 +123,15 @@ export default {
         this.progressCompleted = false;
         this.completed = false;
         this.measurementId = "";
+        // 清理全局事件监听
+        window.removeEventListener("resize", this.applyFitMode);
         // 清理控制器
         if (this.faceController) {
           this.faceController.dispose();
           this.faceController = null;
         }
       } catch (error) {
-        console.log(error);
+        console.error("dispose error:", error);
       }
     },
     updateMessage({ level, message }) {
@@ -143,30 +139,20 @@ export default {
       try {
         // 更新状态
         this.faceController.setText(
-          level > 0 ? "人脸晃动，请保持静止" : "测量中，请保持静止"
+          level > 0 ? MEASUREMENT.FACE_SHAKING : MEASUREMENT.MEASURING_KEEP_STILL
         );
         this.faceController.setCornerMarkerColor(DANGER_LEVEL_COLORS[level]);
       } catch (error) {
-        console.log(error);
+        console.error("updateMessage error:", error);
       }
     },
     listenerCornerMarkerEvent() {
       const cornerMarker = this.faceController.getCornerMarker();
       if (!cornerMarker) return;
 
-      // 倒计时开始
-      cornerMarker.on("countdownStarted", () => {
-        console.log("countdownStarted");
-      });
-      // 倒计时进行中
-      cornerMarker.on("countdownTick", () => {
-        console.log("countdownTick");
-      });
       // 倒计时结束
       cornerMarker.on("countdownFinished", async () => {
-        console.log("倒计时结束！");
         this.handleStartMeasurement();
-        // this.faceController.showHeart(10);
       });
 
       // getProfile
@@ -176,22 +162,13 @@ export default {
       });
       // 测量进度是否完成
       cornerMarker.on("progressCompleted", () => {
-        this.faceController.setText("测量完成，计算中请稍候...");
+        this.faceController.setText(MEASUREMENT.MEASUREMENT_COMPLETE);
         this.progressCompleted = true;
-        this.toRouter();
-        if (this.completed) {
-        } else {
-          this.faceController.startLoading();
-        }
+        this.faceController.startLoading();
       });
     },
     async startProgress({ measurementId }) {
-      try {
-        this.measurementId = measurementId;
-        await this.faceController.startProgress();
-      } catch (error) {
-        console.log("startProgress", error);
-      }
+      this.measurementId = measurementId;
     },
     async startMeasurement() {
       this.loading = true;
@@ -203,7 +180,7 @@ export default {
           canvasId: "mediapipe-canvas",
           isMaskEnabled: this.isMaskEnabled,
           maskColor: "rgba(255, 255, 255, 1)",
-          duration: 27000,
+          duration: 30000,
         });
         this.faceController.showHeart("");
 
@@ -216,14 +193,14 @@ export default {
         });
         FaceDetector.on("cameraError", (e) => {
           showDialog({
-            title: "系统消息",
+            title: MEASUREMENT.SYSTEM_MESSAGE,
             type: "fail",
             message: e?.message,
           });
         });
         FaceDetector.on("permissionDenied", (e) => {
           showDialog({
-            title: "系统消息",
+            title: MEASUREMENT.SYSTEM_MESSAGE,
             type: "fail",
             message: e?.message,
           });
@@ -231,12 +208,14 @@ export default {
         await this.listenerCornerMarkerEvent();
       } catch (error) {
         this.dispose();
-        console.log(error);
+        console.error("startMeasurement error:", error);
       }
     },
     applyFitMode() {
-      const video = document.getElementById("mediapipe-video");
-      const canvas = document.getElementById("mediapipe-canvas");
+      const mc = this.$refs.measurement;
+      if (!mc) return;
+      const video = mc.getVideoElement();
+      const canvas = mc.getCanvasElement();
       if (!video || !video.videoWidth || !video.videoHeight) return;
 
       const vw = window.innerWidth;
@@ -254,7 +233,9 @@ export default {
       addMode(canvas, mode);
     },
     bindVideoFitEvents() {
-      const video = document.getElementById("mediapipe-video");
+      const mc = this.$refs.measurement;
+      if (!mc) return;
+      const video = mc.getVideoElement();
       if (!video) return;
       video.removeEventListener("loadedmetadata", this.applyFitMode);
       video.addEventListener("loadedmetadata", this.applyFitMode);
@@ -265,22 +246,20 @@ export default {
       try {
         // 确保 CornerMarker 存在且可用
         if (this.faceController && this.faceController.isReady()) {
-          this.faceController.setText("测量环境检测中，请稍等… ");
+          this.faceController.setText(MEASUREMENT.ENVIRONMENT_CHECK);
           // console.log("setText 已调用");
         } else {
           console.warn("faceController 未准备好，无法设置文本");
         }
-        // 测量服务令牌(token)需要通过请求许可证(APP_ID/APP_KEY) 认证API获得
-        // 用户认证 | 心健康测量SDK产品文档  https://measurement.xymind.cn/docs/api/authorization.html
         const measurement_token = import.meta.env.VITE_TOKEN;
         Cookies.set("Measurement-Token", measurement_token);
-        let categories = 1;
+
         await this.$refs.measurement.handleStartMeasurement(
           measurement_token,
           MeasurementCategory.ALL
         );
       } catch (error) {
-        console.log(error);
+        console.error("handleStartMeasurement error:", error);
         this.dispose();
         this.$refs.measurement.interrupt();
       }

@@ -1,8 +1,8 @@
 <template>
-  <div ref="text-more" class="text-more"
+  <div ref="textMoreRef" class="text-more"
      :class="classObj"
   >
-    <span style="white-space: pre-line;" v-html="message" />
+    <span style="white-space: pre-line;">{{ message }}</span>
     <span
       v-if="showMore"
       class="more"
@@ -13,52 +13,44 @@
     </span>
   </div>
 </template>
-<script>
-export default {
-  name: "index",
-  data() {
-    return {
-      more: false,
-      showMore: false
-    }
-  },
-  props: {
-    message: {
-      type: String,
-      default: () => ''
-    },
-    lines: {
-      type: Number,
-      default: () => 2
-    },
-    offsetHeight: {
-      type: Number,
-      default: () => 30
-    }
-  },
-  computed: {
-    classObj() {
-      const { showMore, more, lines } = this
-      const cArry = []
-      if (showMore && !more) {
-        cArry.push('line-clamp')
-      }
-      cArry.push(`line-clamp-${lines}`)
-      return cArry
-    },
-  },
-  mounted() {
-    this.$nextTick(() => {
-      const { offsetHeight } = this.$refs['text-more']
-      if (offsetHeight > this.offsetHeight) {
-        this.showMore = true
-      }
-    })
-  },
-  methods: {
+<script setup>
+import { ref, computed, onMounted, nextTick } from 'vue'
 
+const props = defineProps({
+  message: {
+    type: String,
+    default: ''
   },
-}
+  lines: {
+    type: Number,
+    default: 2
+  },
+  offsetHeight: {
+    type: Number,
+    default: 30
+  }
+})
+
+const more = ref(false)
+const showMore = ref(false)
+const textMoreRef = ref(null)
+
+const classObj = computed(() => {
+  const classes = []
+  if (showMore.value && !more.value) {
+    classes.push('line-clamp')
+  }
+  classes.push(`line-clamp-${props.lines}`)
+  return classes
+})
+
+onMounted(() => {
+  nextTick(() => {
+    if (textMoreRef.value && textMoreRef.value.offsetHeight > props.offsetHeight) {
+      showMore.value = true
+    }
+  })
+})
 </script>
 
 <style lang="scss" scoped>

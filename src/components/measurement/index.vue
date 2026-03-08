@@ -16,21 +16,23 @@
 <script>
 import { Measurement, MeasurementCategory } from "xiaoyang-health-measurement";
 import { showDialog } from "vant";
+import { MEASUREMENT } from "../../utils/messages";
 export default {
+  emits: ['handleEvent'],
   props: {
     value: {
       type: Boolean,
-      default: () => false,
+      default: false,
     },
     userInfo: {
-      // 用户信息
       type: Object,
-      default: () => {},
+      default: () => ({}),
     },
   },
   data() {
     return {
       Measurement: null,
+      reportReceived: false,
     };
   },
   computed: {
@@ -55,37 +57,39 @@ export default {
         this.Measurement = await new Measurement(
           {
             videoId: "mediapipe-video",
-            env: import.meta.env.MODE,
             token,
+            measurementUrl: import.meta.env.VITE_MEASUREMENT_URL,
+            measurementDuration: 30000,
           },
           ...[categories]
         );
         this.listenerMeasurementEvent();
-        this.Measurement.server = import.meta.env.VITE_MEASUREMENT_URL;
         this.Measurement.start();
       } catch (error) {
-        console.log("error", error);
+        console.error("handleStartMeasurement error:", error);
       }
     },
     listenerMeasurementEvent() {
       this.Measurement.addEventListener("crashed", async (sender, e) => {
         console.log("crashed", e);
         showDialog({
-          title: "系统消息",
+          title: MEASUREMENT.SYSTEM_MESSAGE,
           type: "fail",
-          message: e?.message || "人脸超出边界，请重新开始测量",
+          message: e?.message || MEASUREMENT.FACE_OUT_OF_BOUNDS,
         });
         this.$emit("handleEvent", "dispose");
         this.interrupt();
       });
       this.Measurement.addEventListener("interrupted", () => {
         console.log("interrupted 终止测量");
-        this.$emit("handleEvent", "dispose");
+        if (!this.reportReceived) {
+          this.$emit("handleEvent", "dispose");
+        }
       });
       /**
-       * 开始测量 回掉
+       * 开始测量回调
        */
-      this.Measurement.addEventListener("started", async (sender, { measurementId }) => {
+      this.Measurement.addEventListener("started", async (sender, measurementId) => {
         this.$emit("handleEvent", "startProgress", {
           measurementId,
           deviceNo: this.Measurement.deviceNo,
@@ -95,13 +99,17 @@ export default {
        * 视频传送完成
        */
       this.Measurement.addEventListener("collected", () => {
-        console.log("collected 视频传送完成");
+      });
+      /**
+       * 采集进度更新（由 SDK 驱动）
+       */
+      this.Measurement.addEventListener("captureProgressUpdated", (sender, data) => {
+        this.$emit("handleEvent", "updateProgress", data?.progress ?? 0);
       });
       /**
        * 监听回传的阶段性测量结果
        */
       this.Measurement.addEventListener("chunkReportGenerated", (sender, result) => {
-        console.log("chunkReportGenerated", result);
         this.$emit("handleEvent", "chunkReportGenerated", result);
       });
 
@@ -109,8 +117,8 @@ export default {
        * 新完整报告
        */
       this.Measurement.addEventListener("wholeReportGenerated", async (sender, data) => {
+        this.reportReceived = true;
         await this.reportProcessed(data);
-        console.log("wholeReportGenerated", data);
       });
       this.Measurement.addEventListener("faceSafetyStatus", (sender, params) => {
         // console.log("faceSafetyStatus", params);
@@ -173,17 +181,15 @@ export default {
               explanation: JSON.stringify(explanation),
             })
           );
-          // await createMeasurement();
-          // const { data: result } = await webMeasurement(this.Measurement.measurementId);
-          this.$emit("handleEvent", "completed"); // 标记测量已经完成
+          this.$emit("handleEvent", "completed");
         } else {
-          console.log(msg);
-          showDialog({ title: "系统消息", type: "fail", message: msg });
+          console.error("report processing error:", msg);
+          showDialog({ title: MEASUREMENT.SYSTEM_MESSAGE, type: "fail", message: msg });
         }
       } catch (e) {
-        console.log(e);
+        console.error("reportProcessed error:", e);
         showDialog({
-          title: "测量服务通讯错误，请检查网络后重试",
+          title: MEASUREMENT.NETWORK_ERROR,
           type: "fail",
           message: msg,
         });
@@ -192,30 +198,18 @@ export default {
     interrupt() {
       this.Measurement && this.Measurement?.interrupt();
     },
+    /** 获取视频 DOM 元素 */
+    getVideoElement() {
+      return this.$refs['mediapipe-video'];
+    },
+    /** 获取画布 DOM 元素 */
+    getCanvasElement() {
+      return document.getElementById('mediapipe-canvas');
+    },
   },
 };
 </script>
 <style lang="scss" scoped>
-.mediapipe-video,
-.mediapipe-canvas {
-  position: fixed;
-  width: 100vw;
-  height: 100vh;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  right: 0;
-}
-.mediapipe-canvas {
-  z-index: 10;
-  position: absolute;
-}
-
-// .mediapipe-video {
-//   z-index: 1;
-//   // object-fit: cover; /* 铺满屏幕，保持宽高比 */
-//   transform: scaleX(-1);
-// }
 .mediapipe-video,
 .mediapipe-canvas {
   position: fixed;
@@ -225,10 +219,11 @@ export default {
   z-index: 1;
 }
 .mediapipe-video {
-  transform: translate(-50%, -50%) scaleX(-1); /* 需要镜像就保留 */
+  transform: translate(-50%, -50%) scaleX(-1);
 }
 .mediapipe-canvas {
   transform: translate(-50%, -50%);
+  z-index: 10;
 }
 /* 以宽铺满：横向撑满，不变形（可能上下裁剪） */
 .mediapipe-video.fit-width,
@@ -236,15 +231,10 @@ export default {
   width: 100vw;
   height: auto;
 }
-
 /* 以高铺满：纵向撑满，不变形（可能左右裁剪） */
 .mediapipe-video.fit-height,
 .mediapipe-canvas.fit-height {
   width: auto;
-  height: 100svh; /* Android 推荐用 svh */
-}
-
-.mediapipe-canvas {
-  z-index: 10;
+  height: 100svh;
 }
 </style>

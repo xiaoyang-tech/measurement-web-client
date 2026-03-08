@@ -1,14 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import measurement from '../views/measurement/index.vue'
-import Sao from '../views/sao2/index.vue'
 
 const routes = [
-  { path: '/', component: measurement },
-  { path: '/sao2', name: 'sao2', component: Sao },
+  {
+    path: '/',
+    component: () => import('../views/measurement/index.vue')
+  },
+  {
+    path: '/sao2',
+    name: 'sao2',
+    component: () => import('../views/sao2/index.vue')
+  },
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL), // 与 Vite base 对齐
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
 

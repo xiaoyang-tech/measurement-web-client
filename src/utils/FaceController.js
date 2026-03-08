@@ -1,6 +1,4 @@
 import { FaceDetectorMarker } from "xiaoyang-health-measurement";
-// import { FaceDetectorMarker } from "../../../websdk/src/faceDetectorMarker.js";
-// ../../../../websdk/src/index.js
 import { CornerMarker } from './cornerMarker'
 /**
  * 人脸测量控制器
@@ -144,6 +142,16 @@ export class FaceController {
   }
 
   /**
+   * 由 SDK captureProgressUpdated 事件驱动进度条
+   * @param {number} value - 进度值 0~1
+   */
+  updateProgress(value) {
+    if (this.CornerMarker) {
+      this.CornerMarker.setProgress(value);
+    }
+  }
+
+  /**
    * 开始加载状态
    */
   startLoading() {
@@ -178,7 +186,6 @@ export class FaceController {
    * @param {Function} callback - 回调函数
    */
   on(event, callback) {
-    console.log(event)
     if (this.FaceDetector && this.FaceDetector.on) {
       this.FaceDetector.on(event, callback);
     }
@@ -207,8 +214,7 @@ export class FaceController {
   dispose() {
     try {
       if (this.CornerMarker) {
-        this.CornerMarker.resetProgress();
-        this.CornerMarker.setText("请保持面部在框内");
+        this.CornerMarker.dispose();
         this.CornerMarker = null;
       }
       

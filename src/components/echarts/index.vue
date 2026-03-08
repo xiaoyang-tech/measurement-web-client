@@ -62,23 +62,24 @@ export default {
       if (options) {
         this.echart = echarts.init(this.$refs.echarts)
         if (type === 'bar') {
-          window.onresize = () => {
+          this._barResizeHandler = () => {
             options.xAxis.axisLabel.rotate = this.innerWidth < 1380 ? 45 : 0
             this.echart.setOption(options)
           }
+          window.addEventListener('resize', this._barResizeHandler)
         }
         this.echart.setOption(options)
-        this.echart.on('click', () => {
-          // this.$emit('handCallback', params.data)
-        })
       }
     })
   },
-  beforeDestroy() {
+  beforeUnmount() {
+    if (this._barResizeHandler) {
+      window.removeEventListener('resize', this._barResizeHandler)
+      this._barResizeHandler = null
+    }
     if (!this.echart) {
       return
     }
-    window.onresize = null
     this.echart.dispose()
     this.echart = null
   },

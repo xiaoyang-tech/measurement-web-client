@@ -71,45 +71,27 @@
 </template>
 <script>
 import { reportConfig } from "../../utils/report-config";
-import {
-  Icon,
-  Overlay,
-  RadioGroup,
-  Radio,
-  Cell,
-  CellGroup,
-  Field,
-  Button,
-  Image,
-  Loading,
-} from "vant";
-const footerConfig = [
-  { label: "优秀", color: "#6EDAA9" },
-  { label: "良好", color: "#85c9fa" },
-  { label: "轻度不健康", color: "#FCCE57" },
-  { label: "中度不健康", color: "#FC9557" },
-  { label: "重度不健康", color: "#FF5252" },
+import { FOOTER_CONFIG, HEALTH_COLORS } from "../../utils/constants";
+import { Icon, Loading } from "vant";
+
+// 静态数据提取为模块级常量，避免每次 computed 访问都创建新对象
+const AGE_DATA = [
+  { min: 0, max: 25, total: 100, color: HEALTH_COLORS.SEVERE, label: "重度不健康" },
+  { min: 25, max: 50, total: 100, color: HEALTH_COLORS.MODERATE, label: "轻度不健康" },
+  { min: 50, max: 75, total: 100, color: HEALTH_COLORS.MILD, label: "良好" },
+  { min: 75, max: 100, total: 100, color: HEALTH_COLORS.EXCELLENT, label: "优秀" },
 ];
 
 import Item from "./item/index.vue";
-import "vant/lib/button/style/index";
 export default {
   components: {
     Item,
     [Icon.name]: Icon,
-    [Overlay.name]: Overlay,
-    [RadioGroup.name]: RadioGroup,
-    [Radio.name]: Radio,
-    [Cell.name]: Cell,
-    [CellGroup.name]: CellGroup,
-    [Field.name]: Field,
-    [Button.name]: Button,
-    [Image.name]: Image,
     [Loading.name]: Loading,
   },
   data() {
     return {
-      // report: null, // 数据
+      report: null, // 报告数据（从 localStorage 一次性读取）
       isLoading: false, // 数据加载状态
       query: {
         latitude: "",
@@ -118,18 +100,19 @@ export default {
       },
     };
   },
+  created() {
+    // 一次性从 localStorage 读取并解析报告数据，避免在 computed 中重复调用 JSON.parse
+    try {
+      const raw = localStorage.getItem("report");
+      this.report = raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      console.error("解析 report 数据失败:", e);
+      this.report = null;
+    }
+  },
   computed: {
     ageData() {
-      return [
-        { min: 0, max: 25, total: 100, color: "#FF5252", label: "重度不健康" },
-        { min: 25, max: 50, total: 100, color: "#FC9557", label: "轻度不健康" },
-        { min: 50, max: 75, total: 100, color: "#FCCE57", label: "良好" },
-        { min: 75, max: 100, total: 100, color: "#6EDAA9", label: "优秀" },
-      ];
-    },
-    report() {
-      if (!localStorage.getItem("report")) return null;
-      return JSON.parse(localStorage.getItem("report"));
+      return AGE_DATA;
     },
     explanation() {
       const { explanation } = this.report;
@@ -139,26 +122,16 @@ export default {
       return reportConfig.filter((ele) => ![null, -1].includes(this.report[ele.value]));
     },
     footerConfig() {
-      return footerConfig;
+      return FOOTER_CONFIG;
     },
     measurementId() {
       return this.$route.query.measurementId;
     },
-    // detail() {
-    //   return this.$store.state.detail;
-    // },
     type() {
       return this.$route.query.type;
     },
   },
   methods: {
-    async toRouter(category, label, terms, score, config, valueKey) {
-      try {
-      } catch (e) {
-        console.log(e);
-        alert(e);
-      }
-    },
     getColor(ranking, data) {
       let row = {
         color: "#ff5252",
@@ -173,13 +146,6 @@ export default {
     lickHander() {
       window.location.href = "https://xymind.cn/#/about";
     },
-  },
-  mounted() {
-    // if (this.detail) {
-    //   this.report = {
-    //     ...this.detail,
-    //   };
-    // }
   },
 };
 </script>
@@ -305,46 +271,8 @@ export default {
   font-size: 14px;
   font-weight: 500;
 }
-//::v-deep .page-container {
-//  .mask {
-//    position: relative;
-//    .mask-show {
-//      position: absolute;
-//      left: 0;
-//      right: 0;
-//      bottom: 0;
-//      top: 0;
-//      background: #fff;
-//      z-index: 10000;
-//    }
-//  }
-//
-//  .mask:nth-child(n + 2) {
-//    .mask-show {
-//      top: -12px;
-//      background: #fff;
-//    }
-//  }
-//  .mask:nth-child(3) {
-//    .mask-show {
-//      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 28px, #fff , #fff);
-//    }
-//  }
-//}
-//~ .mask {
-//  background: red!important;
-//  //.mask-show {
-//  //  background: red;
-//  //}
-//}
-::deep {
-  .age {
-    .echarts-list {
-      .label {
-        display: none;
-      }
-    }
-  }
+:deep(.age .echarts-list .label) {
+  display: none;
 }
 .button-content {
   display: flex;
@@ -359,11 +287,9 @@ export default {
   display: flex;
   flex-direction: column;
   padding-top: 10px;
-  ::deep {
-    .van-icon:nth-child(2) {
-      position: relative;
-      top: -10px;
-    }
+  :deep(.van-icon:nth-child(2)) {
+    position: relative;
+    top: -10px;
   }
 }
 .btn {

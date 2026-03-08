@@ -1,13 +1,42 @@
-const jumFunction = (key, color) => {
+import * as echarts from 'echarts'
+import { GAUGE_COLOR_STOPS, EMOTION_LABELS } from '../../utils/constants'
+
+/**
+ * HTML 实体转义，防止 tooltip 中的 XSS 注入
+ */
+const escapeHtml = (str) => {
+  if (str == null) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+/**
+ * 根据情绪类指标分数获取对应颜色
+ * 将 0~10 分数划分为三段，分别对应 color 字符串中逗号分隔的三个颜色值
+ * @param {number} key - 情绪分数 (0~10)
+ * @param {string} color - 逗号分隔的三个颜色值，如 "#6EDAA9,#FCCE57,#FF5252"
+ * @returns {string} 对应的颜色值
+ */
+const getEmotionLevelColor = (key, color) => {
   const data = color.split(',')
-  if (key < 10 / 3) {
+  if (key <= 10 / 3) {
     return data[0]
   }
-  if (key > 10 / 3 && key < 20 / 3) {
+  if (key <= 20 / 3) {
     return data[1]
   }
   return data[2]
 }
+/**
+ * 生成仪表盘 (gauge) 图表配置
+ * @param {{ data: Array }} config - 包含分段阈值数据的配置
+ * @param {number} avg - 当前指标均值
+ * @param {number} [splitNumber=5] - 刻度分段数
+ */
 export const gauge = ({ data }, avg, splitNumber = 5) => {
   const options = {
     // 下载
@@ -43,7 +72,7 @@ export const gauge = ({ data }, avg, splitNumber = 5) => {
           roundCap: true,
           lineStyle: {
             width: 5,
-            color: [[0.25, '#6EDAA9'], [0.5, '#FCCE57'], [0.75, '#FF9732'], [1, '#F55B4B']]
+            color: GAUGE_COLOR_STOPS
           }
         },
         splitLine: {
@@ -125,7 +154,7 @@ export const gauge = ({ data }, avg, splitNumber = 5) => {
         axisLine: {
           show: false,
           lineStyle: {
-            color: [[0.25, '#6EDAA9'], [0.5, '#FCCE57'], [0.75, '#FF9732'], [1, '#F55B4B']]
+            color: GAUGE_COLOR_STOPS
           }
         },
         axisLabel: {
@@ -195,7 +224,7 @@ export const gauge = ({ data }, avg, splitNumber = 5) => {
         axisLine: {
           show: false,
           lineStyle: {
-            color: [[0.25, '#6EDAA9'], [0.5, '#FCCE57'], [0.75, '#FF9732'], [1, '#F55B4B']]
+            color: GAUGE_COLOR_STOPS
           }
         },
         axisLabel: {
@@ -264,6 +293,11 @@ export const gauge = ({ data }, avg, splitNumber = 5) => {
   })
   return options
 }
+/**
+ * 生成柱状图 (bar) 配置，用于展示历史趋势数据
+ * @param {Array} config - 分段阈值配置
+ * @param {Object} ruleForm - 包含 data(时间序列)、score、label、bg 等字段
+ */
 export const bar = (config, ruleForm) => {
   const options = {
     legend: {
@@ -327,19 +361,20 @@ export const bar = (config, ruleForm) => {
   })
   return options
 }
+/** 根据分段阈值查找 value 对应的颜色和标签 */
 function colors(data, value) {
   const row = data.find(({ min, max }) => {
     return value >= min && value < max
   })
   return row && row || { color: 'red', label: '' }
 }
-import * as echarts from 'echarts'
 
+/** 生成折线图 (line) 配置，用于展示指标随时间变化的趋势 */
 export const line = (config, ruleForm) => {
   const { data, score, label, bg } = ruleForm
   let color
-  if (['活力度', '开心度', '愤怒度', '悲伤度', '恐惧度'].includes(label)) {
-    color = jumFunction(score, bg)
+  if (EMOTION_LABELS.includes(label)) {
+    color = getEmotionLevelColor(score, bg)
   } else {
     color = colors(config, score).color
   }
@@ -418,15 +453,14 @@ export const line = (config, ruleForm) => {
   options.tooltip.formatter = (params) => {
     const { value, serialNo } = params[0].data
     const style = { color: 'red' }
-    if (['活力度', '开心度', '愤怒度', '悲伤度', '恐惧度'].includes(label)) {
-      style.color = jumFunction(value, bg)
+    if (EMOTION_LABELS.includes(label)) {
+      style.color = getEmotionLevelColor(value, bg)
     } else {
       style.color = colors(config, value).color
     }
-    /* eslint-disable */
     return `
-        报告编号: ${serialNo} \<br />
-        报告分数: <span style="color: ${style.color}">${Number(value)}${['中风风险', '心脏病风险', '心血管疾病风险', '血氧饱和度'].includes(label) ? '%' : ''}</span> \<br />
+        报告编号: ${escapeHtml(serialNo)} <br />
+        报告分数: <span style="color: ${escapeHtml(style.color)}">${Number(value)}${['中风风险', '心脏病风险', '心血管疾病风险', '血氧饱和度'].includes(label) ? '%' : ''}</span> <br />
       `
   }
   options.xAxis.data = data.map(({ creationTime }) => {
@@ -448,6 +482,7 @@ export const line = (config, ruleForm) => {
   })
   return options
 }
+/** 生成房颤 (AF) 专用柱状图配置 */
 export const afBar = ({ data }) => {
   const options = {
     grid: {
@@ -497,18 +532,18 @@ export const afBar = ({ data }) => {
   options.tooltip.formatter = (params) => {
     const { value, serialNo } = params.data
     return `
-      <span style="color: ${value > 0 ? '#6edaa9' : '#ff5252'}">${value > 0 ? '未发作' : '发作'}</span> \<br />
-      报告编号: ${serialNo}
+      <span style="color: ${value > 0 ? '#6edaa9' : '#ff5252'}">${value > 0 ? '未发作' : '发作'}</span> <br />
+      报告编号: ${escapeHtml(serialNo)}
     `
   }
   return options
 }
+/** 生成汇总折线图配置（与 line 类似，但用于总览页面） */
 export const lineSummary = (config, ruleForm) => {
-  // con
   const { data, score, label, bg } = ruleForm
   let color = 'red'
-  if (['活力度', '开心度', '愤怒度', '悲伤度', '恐惧度'].includes(label)) {
-    color = jumFunction(score, bg)
+  if (EMOTION_LABELS.includes(label)) {
+    color = getEmotionLevelColor(score, bg)
   } else {
     color = colors(config.data, score).color
   }
@@ -547,6 +582,7 @@ export const lineSummary = (config, ruleForm) => {
   }
   return options
 }
+/** 生成房颤 (AF) 专用仪表盘配置，value 为 0~1 的概率值 */
 export const afGauge = (value = 0) => {
   const keyValue = value === 0 ? 100 : value * 100
   return {
