@@ -176,8 +176,11 @@ export class CornerMarker {
   }
 
   init() {
-    this.handleResize();
-    this.render();
+    // 🔥 延迟到下一帧，确保 DOM 已渲染
+    requestAnimationFrame(() => {
+      this.handleResize();
+      this.render();
+    });
   }
 
   bindEvents() {
@@ -391,6 +394,18 @@ export class CornerMarker {
   }
 
   handleResize() {
+    // 🔥 新增：检查 Canvas 是否在 DOM 中
+    if (!this.canvas || !this.canvas.isConnected) {
+      console.warn('[CornerMarker] Canvas not in DOM, skipping resize');
+      return;
+    }
+    // 🔥 新增：检查窗口尺寸是否有效
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (vw === 0 || vh === 0) {
+      console.warn('[CornerMarker] Invalid window size, skipping resize');
+      return;
+    }
     const dpr = window.devicePixelRatio || 1;
     // 设置Canvas的实际像素尺寸（设备像素）
     this.canvas.width = window.innerWidth * dpr;
@@ -994,7 +1009,8 @@ export class CornerMarker {
     if (newProgress >= 1 || elapsed >= this.duration) {
       this.progress = 1;
       this.emit('progressUpdated', 1);
-      this.showCompletionEffect(); // 显示完成效果
+      // 🔥 不再自动显示完成效果，等待 collected 事件（视频上传完成）
+      // this.showCompletionEffect();
       this.emit('progressCompleted');
       this.isProgressRunning = false;
       return;

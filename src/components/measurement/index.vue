@@ -45,6 +45,10 @@ export default {
     this.interrupt();
   },
   methods: {
+    /**
+     * 第一步：创建 Measurement 对象并监听事件（不启动）
+     * 在位置验证通过后调用
+     */
     async handleStartMeasurement(token, categories) {
       // 创建测量
       try {
@@ -59,14 +63,22 @@ export default {
             videoId: "mediapipe-video",
             token,
             measurementUrl: import.meta.env.VITE_MEASUREMENT_URL,
-            measurementDuration: 30000,
+            measurementDuration: 15000,
           },
           ...[categories]
         );
         this.listenerMeasurementEvent();
-        this.Measurement.start();
       } catch (error) {
         console.error("handleStartMeasurement error:", error);
+      }
+    },
+    /**
+     * 第二步：启动 Measurement（在倒计时结束后调用）
+     */
+    async startMeasurement() {
+      if (this.Measurement) {
+        await this.Measurement.start();
+      } else {
       }
     },
     listenerMeasurementEvent() {
@@ -99,6 +111,9 @@ export default {
        * 视频传送完成
        */
       this.Measurement.addEventListener("collected", () => {
+        console.log("collected 视频传送完成");
+        // 触发 collected 事件，通知父组件切换提示文案
+        this.$emit("handleEvent", "collected");
       });
       /**
        * 采集进度更新（由 SDK 驱动）
@@ -120,10 +135,10 @@ export default {
         this.reportReceived = true;
         await this.reportProcessed(data);
       });
-      this.Measurement.addEventListener("faceSafetyStatus", (sender, params) => {
-        // console.log("faceSafetyStatus", params);
-        const { level, hint } = params;
-        this.$emit("handleEvent", "updateMessage", { level, message: hint });
+      // 人脸状态变化事件（SDK 事件名：stateUpdated）
+      this.Measurement.addEventListener("stateUpdated", (sender, params) => {
+        const { level, msg } = params;
+        this.$emit("handleEvent", "updateMessage", { level, message: msg });
       });
     },
     async reportProcessed(data) {

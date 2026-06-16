@@ -124,6 +124,24 @@ export class FaceController {
   }
 
   /**
+   * 开始位置验证（检测人脸位置是否合适）
+   */
+  startPositionValidation() {
+    if (this.FaceDetector) {
+      this.FaceDetector.startPositionValidation();
+    }
+  }
+
+  /**
+   * 停止位置验证
+   */
+  stopPositionValidation() {
+    if (this.FaceDetector) {
+      this.FaceDetector.stopPositionValidation();
+    }
+  }
+
+  /**
    * 开始倒计时
    */
   startCountdown() {

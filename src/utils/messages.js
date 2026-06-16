@@ -10,6 +10,7 @@ export const MEASUREMENT = {
   FACE_SHAKING: '人脸晃动，请保持静止',
   MEASURING_KEEP_STILL: '测量中，请保持静止',
   MEASUREMENT_COMPLETE: '测量完成，计算中请稍候...',
+  REPORT_CALCULATING: '请稍候，我们正在努力为您计算中......',
   ENVIRONMENT_CHECK: '测量环境检测中，请稍等… ',
   NETWORK_ERROR: '测量服务通讯错误，请检查网络后重试',
   SYSTEM_MESSAGE: '系统消息',

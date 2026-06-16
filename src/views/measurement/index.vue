@@ -40,6 +40,7 @@ import { disableIcon, enableIcon } from "./icon.js";
 import { DANGER_LEVEL_COLORS } from "../../utils/constants";
 import { MEASUREMENT } from "../../utils/messages";
 import MaskPage from "./mask.vue";
+import { wasmPreloader } from "../../utils/wasm-preloader";
 export default {
   components: {
     [Icon.name]: Icon,
@@ -62,7 +63,20 @@ export default {
       user: {}, // 用户信息
     };
   },
-  mounted() {},
+  async mounted() {
+    // 页面加载时静默预加载 WASM 文件
+    if (!wasmPreloader.isPreloaded()) {
+      wasmPreloader.preload()
+        .then((success) => {
+          if (success) {
+          } else {
+          }
+        })
+        .catch((err) => {
+        });
+    } else {
+    }
+  },
   async beforeUnmount() {
     this.dispose();
   },
@@ -84,6 +98,10 @@ export default {
           if (this.faceController) {
             this.faceController.updateProgress(params);
           }
+          break;
+        case "collected":
+          // 视频传输完成，切换提示文案
+          this.onVideoCollected();
           break;
         case "dispose":
           this.dispose();
@@ -146,13 +164,42 @@ export default {
         console.error("updateMessage error:", error);
       }
     },
+    /**
+     * 视频传输完成回调（OSS 上传完成）
+     */
+    onVideoCollected() {
+      console.log("collected 视频传输完成，切换提示文案 + 显示完成效果");
+
+      // 显示完成效果（白色遮罩 + 角标）
+      const cornerMarker = this.faceController.getCornerMarker();
+      if (cornerMarker) {
+        cornerMarker.showCompletionEffect();
+      }
+
+      // 切换提示文案
+      if (this.faceController && this.faceController.isReady()) {
+        this.faceController.setText(MEASUREMENT.REPORT_CALCULATING);
+      }
+
+      // 标记进度完成
+      this.progressCompleted = true;
+
+      // 尝试跳转结果页
+      this.toRouter();
+
+      // 如果测量未完成，显示 loading
+      if (!this.completed) {
+        this.faceController.startLoading();
+      }
+    },
     listenerCornerMarkerEvent() {
       const cornerMarker = this.faceController.getCornerMarker();
       if (!cornerMarker) return;
 
       // 倒计时结束
       cornerMarker.on("countdownFinished", async () => {
-        this.handleStartMeasurement();
+        console.log("🔥 [倒计时结束] 开始调用 startMeasurement");
+        await this.$refs.measurement?.startMeasurement();
       });
 
       // getProfile
@@ -160,11 +207,9 @@ export default {
       cornerMarker.on("maskToggled", (isMaskEnabled) => {
         this.isMaskEnabled = isMaskEnabled;
       });
-      // 测量进度是否完成
+      // 测量进度是否完成（视频采集完成，但还未上传）
       cornerMarker.on("progressCompleted", () => {
-        this.faceController.setText(MEASUREMENT.MEASUREMENT_COMPLETE);
         this.progressCompleted = true;
-        this.faceController.startLoading();
       });
     },
     async startProgress({ measurementId }) {
@@ -180,16 +225,39 @@ export default {
           canvasId: "mediapipe-canvas",
           isMaskEnabled: this.isMaskEnabled,
           maskColor: "rgba(255, 255, 255, 1)",
-          duration: 30000,
+          duration: 15000,
         });
         this.faceController.showHeart("");
 
         FaceDetector.on("cameraStarted", () => {
           this.mask = false;
           this.loading = false;
-          this.faceController.startCountdown();
+
+          // 开始位置验证（检测人脸位置是否合适）
+          this.faceController.startPositionValidation();
+
           this.bindVideoFitEvents();
           this.$nextTick(() => this.applyFitMode());
+        });
+
+        // 监听位置验证通过事件
+        FaceDetector.on("positionValidated", async () => {
+          try {
+            await this.handleStartMeasurement();
+            this.faceController.startCountdown();
+          } catch (error) {
+            console.error("handleStartMeasurement 执行失败:", error);
+            this.dispose();
+          }
+        });
+
+        // 监听人脸位置状态变化（抬头/低头/靠左/靠右等提示）
+        FaceDetector.on("stateUpdated", (params) => {
+          const { level, msg } = params;
+          if (this.faceController && this.faceController.isReady()) {
+            this.faceController.setText(msg || MEASUREMENT.MEASURING_KEEP_STILL);
+            this.faceController.setCornerMarkerColor(DANGER_LEVEL_COLORS[level]);
+          }
         });
         FaceDetector.on("cameraError", (e) => {
           showDialog({
