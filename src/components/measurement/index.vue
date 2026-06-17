@@ -228,28 +228,21 @@ export default {
 .mediapipe-video,
 .mediapipe-canvas {
   position: fixed;
-  left: 50%;
-  top: 50%;
-  object-position: center center;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
 }
+/* iOS Safari 对 position:fixed + transform:translate 合成时使用低分辨率光栅化，
+   导致模糊。视频用 object-fit:cover 替代 translate 居中，仅保留 scaleX(-1) 镜像 */
 .mediapipe-video {
-  transform: translate(-50%, -50%) scaleX(-1);
+  object-fit: cover;
+  transform: scaleX(-1);
+  -webkit-transform: scaleX(-1);
 }
 .mediapipe-canvas {
-  transform: translate(-50%, -50%);
   z-index: 10;
-}
-/* 以宽铺满：横向撑满，不变形（可能上下裁剪） */
-.mediapipe-video.fit-width,
-.mediapipe-canvas.fit-width {
-  width: 100vw;
-  height: auto;
-}
-/* 以高铺满：纵向撑满，不变形（可能左右裁剪） */
-.mediapipe-video.fit-height,
-.mediapipe-canvas.fit-height {
-  width: auto;
-  height: 100svh;
+  /* CornerMarker.handleResize() 已通过 inline style 精确设置宽高 */
 }
 </style>

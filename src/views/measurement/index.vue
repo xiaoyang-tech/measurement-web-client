@@ -141,8 +141,6 @@ export default {
         this.progressCompleted = false;
         this.completed = false;
         this.measurementId = "";
-        // 清理全局事件监听
-        window.removeEventListener("resize", this.applyFitMode);
         // 清理控制器
         if (this.faceController) {
           this.faceController.dispose();
@@ -235,9 +233,6 @@ export default {
 
           // 开始位置验证（检测人脸位置是否合适）
           this.faceController.startPositionValidation();
-
-          this.bindVideoFitEvents();
-          this.$nextTick(() => this.applyFitMode());
         });
 
         // 监听位置验证通过事件
@@ -278,37 +273,6 @@ export default {
         this.dispose();
         console.error("startMeasurement error:", error);
       }
-    },
-    applyFitMode() {
-      const mc = this.$refs.measurement;
-      if (!mc) return;
-      const video = mc.getVideoElement();
-      const canvas = mc.getCanvasElement();
-      if (!video || !video.videoWidth || !video.videoHeight) return;
-
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const screenRatio = vw / vh;
-      const videoRatio = video.videoWidth / video.videoHeight;
-
-      const addMode = (el, mode) => {
-        el.classList.remove("fit-width", "fit-height");
-        el.classList.add(mode);
-      };
-
-      const mode = videoRatio > screenRatio ? "fit-height" : "fit-width";
-      addMode(video, mode);
-      addMode(canvas, mode);
-    },
-    bindVideoFitEvents() {
-      const mc = this.$refs.measurement;
-      if (!mc) return;
-      const video = mc.getVideoElement();
-      if (!video) return;
-      video.removeEventListener("loadedmetadata", this.applyFitMode);
-      video.addEventListener("loadedmetadata", this.applyFitMode);
-      window.removeEventListener("resize", this.applyFitMode);
-      window.addEventListener("resize", this.applyFitMode);
     },
     async handleStartMeasurement() {
       try {
