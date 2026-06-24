@@ -62,7 +62,6 @@ export default {
           {
             videoId: "mediapipe-video",
             token,
-            measurementUrl: import.meta.env.VITE_MEASUREMENT_URL,
             measurementDuration: 15000,
           },
           ...[categories]
